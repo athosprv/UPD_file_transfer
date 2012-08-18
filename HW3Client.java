@@ -1,24 +1,21 @@
 import java.io.*;
 import java.net.*;
 
-public class HW3Client
-{
+public class HW3Client {
+
     /**
      * The UDP socket used by the client to communicate with the
      * server.
      */
     private DatagramSocket socket;
-
     /**
      * The IP address of the server
      */
     private InetAddress serverAddress;
-
     /**
      * The port the server is listening on
      */
     private int serverPort;
-
 
     /**
      * Constructs a HW3 Client object that will use UDP messages to
@@ -36,12 +33,13 @@ public class HW3Client
      * checkListen method doesn't allow the operation.
      */
     public HW3Client(String host, int port)
-        throws SocketException, UnknownHostException
-    {
+            throws SocketException, UnknownHostException {
         //DEFINE ME
         // Create the socket for communication with the host.
+        socket = new DatagramSocket();
+        serverPort = port;
+        serverAddress = InetAddress.getByName(host);
     }
-
 
     /**
      * Starts up the client.  The client must first print out a
@@ -54,8 +52,7 @@ public class HW3Client
      * @throws IOException whenever the underlying DatagramSocket used
      * by the client throws an IOException
      */
-    public void run() throws IOException
-    {
+    public void run() throws IOException {
         //DEFINE ME
         // Request a listing of files from the server.
         // Display the listing on the console window
@@ -65,20 +62,82 @@ public class HW3Client
         //     OR display error message if no such file exists.
         //
         // You do not have to worry about what happens if either the
-        //      request or the reply is dropped.
-    }
+        //      request or the reply is dropped.        
 
+        // Some I/O objects are initialized.
+        BufferedReader inFromUser = new BufferedReader(new InputStreamReader(System.in));
+        BufferedWriter out;
+
+        byte[] receiveData = new byte[1024];
+
+        String sentence = "";
+        String process = "";
+        String modifiedSentence = "";
+        //  DatagramPacket objects are set to default values.
+        DatagramPacket sendPacket = new DatagramPacket(new byte[0], 0, serverAddress, serverPort);
+        DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+
+        System.out.println("Please enter 'request' to request a listing of files from the server...");
+        sentence = inFromUser.readLine();
+        if (sentence.toUpperCase().equals("REQUEST")) {
+            System.out.println("Requesting...");
+
+        } else {
+            System.out.println("No Request sent. Exiting...");
+            System.exit(0);
+        }
+        modifiedSentence = sendAndReceive(process, sentence, new byte[1024], receiveData, sendPacket, receivePacket);
+
+        sentence = prompt(inFromUser);
+        process = "file";
+        modifiedSentence = sendAndReceive(process, sentence, new byte[1024], receiveData, sendPacket, receivePacket);
+
+        if (!modifiedSentence.equals("File Does Not Exist")) {
+            //File aFile = new File(fileName);
+            out = new BufferedWriter(new FileWriter(sentence));
+            out.write(modifiedSentence);
+            out.close();
+            System.out.println("File: " + sentence + " has been copied.");
+        } else {
+            System.out.println("FROM SERVER: " + modifiedSentence);
+        }
+    }
 
     /**
      * A private helper method that prompts the user for a
      * filename. You might find it useful.
      */
-    private static String prompt()
-    {
-        System.console().printf("Enter a remote file name or QUIT to exit: ");
-        return System.console().readLine();
+    private static String prompt(BufferedReader inFromUser) throws IOException {
+        System.out.println("Enter a fileName...");//
+        //System.console().printf("Enter a remote file name or QUIT to exit: ");
+        return inFromUser.readLine();
     }
 
+    //  Convenient method for code reuse
+    private String sendAndReceive(String process, String sentence, byte[] sendData, byte[] receiveData, DatagramPacket sendPacket, DatagramPacket receivePacket) throws IOException {
+        {
+            sendData = sentence.getBytes();
+
+            //  Packet is prepared to be sent to the server.
+            sendPacket.setData(sendData);
+            sendPacket.setLength(sendData.length);
+
+            //  Packet is sent
+            socket.send(sendPacket);
+
+            receivePacket.setData(receiveData);
+            receivePacket.setLength(receiveData.length);
+            //  Packet is received from the server
+            socket.receive(receivePacket);
+
+            int length = receivePacket.getLength();
+            String modifiedSentence = new String(receivePacket.getData(), 0, length);
+            if (!process.equals("file")) {
+                System.out.println("FROM SERVER: " + modifiedSentence);
+            }
+            return modifiedSentence;
+        }
+    }
 
     /**
      * Creates a HW3Client object that will connect to the server and
@@ -87,8 +146,7 @@ public class HW3Client
      *
      * DO NOT CHANGE ANYTHING IN MAIN!
      */
-    public static void main(String[] args) throws Exception
-    {
+    public static void main(String[] args) throws Exception {
         HW3Client client = null;
         int port = -1;
 
@@ -100,18 +158,17 @@ public class HW3Client
         try {
             port = Integer.parseInt(args[1]);
             if (port < 1024 || port > 65535) {
-                System.out.println("port number must be between" +
-                                   " 1024 and 65535");
+                System.out.println("port number must be between"
+                        + " 1024 and 65535");
                 System.exit(1);
             }
-        }
-        catch(NumberFormatException e) {
+        } catch (NumberFormatException e) {
             System.out.println("Second argument was not an integer");
             System.exit(1);
         }
 
         client = new HW3Client(args[0], port);
         client.run();
-    }
 
+    }
 }
